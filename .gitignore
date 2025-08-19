@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+.env
+*.env
+
+# Django
+db.sqlite3
+*.log
+staticfiles/
+media/
+*.pot
+*.pyc
+
+# VSCode / IDEs
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Images & gifs in repo root
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# HTTP request files
+*.http
+
+# JSON data files
+*.json
