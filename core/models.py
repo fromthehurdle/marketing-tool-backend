@@ -9,14 +9,24 @@ class ChannelChoices(models.TextChoices):
     COUPANG = 'coupang', 'Coupang'
 
 
-class DetailCategoryChoices(models.TextChoices):
+# class DetailCategoryChoices(models.TextChoices):
+#     PRODUCT_OPTION = 'product_option', 'Product Option'
+#     PRODUCT_DESCRIPTION = 'product_description', 'Product Description'
+#     SPECIFICATIONS = 'specifications', 'Specifications'
+#     USAGE_GUIDE = 'usage_guide', 'Usage Guide'
+#     INGREDIENTS = 'ingredients', 'Ingredients'
+#     SIZE_CHART = 'size_chart', 'Size Chart'
+#     WARRANTY = 'warranty', 'Warranty'
+#     OTHER = 'other', 'Other'
+
+class DetailCategoryChoices(models.TextChoices): 
+    HOOK = 'hook', 'Hook'
+    PROMOTION = 'promotion', 'Promotion'
     PRODUCT_OPTION = 'product_option', 'Product Option'
-    PRODUCT_DESCRIPTION = 'product_description', 'Product Description'
-    SPECIFICATIONS = 'specifications', 'Specifications'
-    USAGE_GUIDE = 'usage_guide', 'Usage Guide'
-    INGREDIENTS = 'ingredients', 'Ingredients'
-    SIZE_CHART = 'size_chart', 'Size Chart'
-    WARRANTY = 'warranty', 'Warranty'
+    REVIEW = 'review', 'Review'
+    QNA = 'qna', 'QnA'
+    SHIPPING = 'shipping', 'Shipping'
+    SELLING_POINT = 'selling_point', 'Selling Point'
     OTHER = 'other', 'Other'
 
 
@@ -245,3 +255,12 @@ class AnalysisResult(models.Model):
         if isinstance(self.result_json, dict):
             return self.result_json.get('key_points', [])
         return []
+
+
+class Prompts(models.Model): 
+    prompt = models.TextField()
+    category = models.CharField(max_length=50, choices=DetailCategoryChoices.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta: 
+        unique_together = ['category']

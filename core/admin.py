@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Search, Result, ResultItem, ResultDetailImage, ResultReview,
-    History, Library, LibraryItem, AnalysisResult
+    History, Library, LibraryItem, AnalysisResult, Prompts
 )
 
 
@@ -139,3 +139,5 @@ class AnalysisResultAdmin(admin.ModelAdmin):
         points = obj.get_key_points()
         return f"{len(points)} key points" if points else "No key points"
     key_points.short_description = 'Key Points Count'
+
+admin.site.register(Prompts)  # Register Prompts model for admin interface

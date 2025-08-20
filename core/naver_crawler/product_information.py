@@ -32,11 +32,23 @@ class ProductInformationExtractor:
         self.referer = self.get_referer(data)
         return parsed_urls if parsed_urls else []
 
+    # def parse_product_details(self, data):
+    #     html = data.get("renderContent", "")
+    #     if html: 
+    #         urls = re.findall(r'https://shop-phinf\.pstatic\.net/[^\s"\\]+', html)
+    #         return urls 
+
     def parse_product_details(self, data):
         html = data.get("renderContent", "")
-        if html: 
-            urls = re.findall(r'https://shop-phinf\.pstatic\.net/[^\s"\\]+', html)
-            return urls 
+        if not html:
+            return []
+
+        # Match both src= and data-src=, with or without file extensions
+        urls = re.findall(
+            r'(?:src|data-src)\s*=\s*["\'](https?://[^\s"\'>]+)',
+            html
+        )
+        return urls
     
     def get_referer(self, data):
         html = data.get("renderContent", "")

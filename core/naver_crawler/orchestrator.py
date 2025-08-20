@@ -186,7 +186,8 @@ class Orchestrator:
             if product_details: 
                 count = 1
                 order = 0
-                for product_url in product_details[::2]: 
+                # for product_url in product_details[::2]: 
+                for product_url in product_details: 
                     # Download product detail images 
                     try: 
                         proxies = {
@@ -208,10 +209,11 @@ class Orchestrator:
 
                             with open(file_name, 'wb') as file:
                                 file.write(response.content)
-
+                            gif_file_name = None
                             if 'gif' in product_url: 
                                 im = Image.open(file_name)
                                 im.save(f"{product_id}_{count}.png")
+                                gif_file_name = file_name
                                 file_name = f"{product_id}_{count}.png"
                             
                             # Upload to Digital Ocean Spaces
@@ -220,6 +222,9 @@ class Orchestrator:
                             # Save product detail's url to database 
                             if os.path.exists(file_name):
                                 os.remove(file_name)
+
+                                if gif_file_name: 
+                                    os.remove(gif_file_name)
                             
                             order = self.save_product_details_to_db(result_item, image_url, order)
 
@@ -231,6 +236,8 @@ class Orchestrator:
             product_reviews = product_information.get_product_reviews()
             if product_reviews: 
                 self.save_product_reviews_to_db(result_item, product_reviews)
+
+            return True
 
 
 if __name__ == "__main__":

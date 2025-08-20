@@ -143,7 +143,7 @@ class NaverProductSearch:
         }
 
         auth = HTTPProxyAuth(proxy_username, proxy_password)
-
+        
         response = requests.get(private_api, params=params, headers=headers, cookies=cookies, proxies=proxies, auth=auth)
 
         print(f"Channel UID response: {response.content}")

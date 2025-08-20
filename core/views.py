@@ -1,16 +1,25 @@
+import os
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db import models 
 from django.db.models import Count, Q, Prefetch, Avg
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from collections import defaultdict
 
+import os 
+import boto3
+import uuid
+from datetime import datetime
+import tempfile
+
+
 from .models import (
     Search, Result, ResultItem, ResultDetailImage, ResultReview,
-    History, Library, LibraryItem, AnalysisResult
+    History, Library, LibraryItem, AnalysisResult, Prompts
 )
 from .serializers import (
     SearchListSerializer, SearchCreateSerializer, SearchDetailSerializer,
@@ -384,6 +393,11 @@ class ResultItemViewSet(viewsets.ModelViewSet):
         serializer = LibraryItemSerializer(library_item, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def fix_url(self, url): 
+        if "https://https://" in url: 
+            url = url.replace("https://https://", "https://")
+        return url
+
     @action(detail=True, methods=['POST'])
     def analyze(self, request, pk=None): 
         """Update analysis status of the result item"""
@@ -408,6 +422,10 @@ class ResultItemViewSet(viewsets.ModelViewSet):
                     category=category
                 )
 
+                prompt = Prompts.objects.get(
+                    category=category
+                )
+
                 if images.exists(): 
                     analysis_result, created = AnalysisResult.objects.get_or_create(
                         result_item=result_item,
@@ -415,10 +433,10 @@ class ResultItemViewSet(viewsets.ModelViewSet):
                         category=category,
                         defaults={
                             'model_used': model,
-                            'prompt_used': prompt_template,
+                            'prompt_used': prompt.prompt if prompt else '',
                             'result_json': {
                                 'status': 'pending',
-                                'image_urls': [img.url for img in images],
+                                'image_urls': [self.fix_url(img.url) for img in images],
                                 'image_count': images.count()
                             }
                         }
@@ -437,7 +455,79 @@ class ResultItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-    @action(detail=True, methods=['get', 'post'])
+    @action(detail=False, methods=['post'])
+    def upload_image(self, request): 
+        try: 
+            if 'cropped_image' not in request.FILES: 
+                return Response({'error': 'No image file provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            uploaded_file = request.FILES['cropped_image']
+            original_image_id = request.data.get('original_image_id')
+
+            # Validate file type
+            if not uploaded_file.content_type.startswith('image/'):
+                return Response({'error': 'File must be an image'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Generate unique filename
+            file_extension = uploaded_file.name.split('.')[-1] if '.' in uploaded_file.name else 'jpg'
+            unique_filename = f"cropped_images/{uuid.uuid4().hex}_{int(datetime.now().timestamp())}.{file_extension}"
+            print(f"Uploading image to DigitalOcean Spaces: {unique_filename}")
+     
+
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as temp_file: 
+                print(f"Saving uploaded file to temporary path: {temp_file.name}")
+                for chunk in uploaded_file.chunks(): 
+                    temp_file.write(chunk)
+                temp_file_path = temp_file.name
+
+            print(f"Temporary file created at: {temp_file_path}")
+            print("SPACES REGION_NAME:", os.getenv('SPACES_REGION_NAME'))
+            print(f"SPACES SPACE_NAME: {os.getenv('SPACES_SPACE_NAME')}")
+            print(f"ENDPOINT URL: https://{os.getenv('SPACES_REGION_NAME')}.digitaloceanspaces.com")
+            print(f"SPACES ACCESS_KEY: {os.getenv('SPACES_ACCESS_KEY')}")
+            print(f"SPACES SECRET_KEY: {os.getenv('SPACES_SECRET_KEY')}")
+            try:
+                # Initialize boto3 session and client
+                session = boto3.session.Session() 
+                client = session.client(
+                    's3', 
+                    region_name=os.getenv('SPACES_REGION_NAME'), 
+                    endpoint_url=f"https://{os.getenv('SPACES_REGION_NAME')}.digitaloceanspaces.com", 
+                    aws_access_key_id=os.getenv('SPACES_ACCESS_KEY'), 
+                    aws_secret_access_key=os.getenv('SPACES_SECRET_KEY'), 
+                )
+
+                # Upload file
+                client.upload_file(
+                    temp_file_path,  # Local file path
+                    os.getenv('SPACES_SPACE_NAME'),  # Bucket name
+                    unique_filename,  # Object key (filename in bucket)
+                    ExtraArgs={
+                        'ACL': 'public-read',
+                    }
+                )
+
+                spaces_url = f"https://{os.getenv('SPACES_CDN_ENDPOINT')}/{unique_filename}"
+
+                return Response({
+                    'success': True,
+                    'message': 'Image uploaded successfully',
+                    'image_url': spaces_url,
+                    'filename': unique_filename,
+                    'file_size': uploaded_file.size,
+                    'original_image_id': original_image_id
+                }, status=status.HTTP_201_CREATED)
+            
+            finally: 
+                if os.path.exists(temp_file_path): 
+                    os.unlink(temp_file_path)  # Clean up temp files
+        
+        except Exception as e: 
+            print(f"Error uploading file to digital ocen spaces: {e}")
+            return Response({'error': 'Failed to upload image'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    @action(detail=True, methods=['get', 'post', 'delete'])
     def images(self, request, pk=None): 
         """Get or create detail images"""
         result_item = self.get_object()
@@ -448,11 +538,32 @@ class ResultItemViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         
         elif request.method == 'POST': 
-            serializer = ResultDetailImageSerializer(data=request.data, context={'request': request})
+            max_order = result_item.detail_images.aggregate(
+                max_order=models.Max('order')
+            )['max_order'] or 0
+            
+            data = request.data.copy()
+            data['order'] = max_order + 1
+
+            serializer = ResultDetailImageSerializer(data=data, context={'request': request})
             if serializer.is_valid(): 
                 serializer.save(result_item=result_item)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE': 
+            image_id = request.data.get('image_id')
+            if not image_id: 
+                return Response({'error': 'image_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try: 
+                image = result_item.detail_images.get(id=image_id)
+                image.delete()
+                return Response({'message': 'Image deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+            except ResultDetailImage.DoesNotExist:
+                return Response({'error': 'Image not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
     
     @action(detail=True, methods=['get'])
     def image_groups(self, request, pk=None): 
@@ -557,6 +668,8 @@ class ResultItemViewSet(viewsets.ModelViewSet):
         result_item.save()
 
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
+    
+    
 
 
 class HistoryViewSet(viewsets.ReadOnlyModelViewSet):

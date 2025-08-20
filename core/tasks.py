@@ -5,10 +5,8 @@ from django.db import transaction
 import json 
 from openai import OpenAI
 from celery.utils.log import get_task_logger
-# from .naver_crawler import orchestrator 
 from .naver_crawler.orchestrator import Orchestrator
 logger = get_task_logger(__name__)
-
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) 
 
@@ -22,53 +20,6 @@ def scrape_naver_task(self, search_query, search_id:int):
         self.retry()
     else:
         logger.info("Successfully scraped Naver.")
-
-# @app.task(bind=True, max_retries=2, default_retry_delay=10)
-# def run_llm_analysis_task(self, result_item: int): 
-#     print(f"Running LLM analysis for result item {result_item}")
-#     analysis_result = models.AnalysisResult.objects.filter(result_item=result_item)
-
-#     for result in analysis_result: 
-#         try: 
-#             result.status = models.AnalysisStatusChoices.IN_PROGRESS
-#             result.save()
-
-#             image_urls = json.loads(result.result_json).get('image_urls', {})
-
-#             input_images = []
-#             for image in image_urls: 
-#                 input_images.append({
-#                     "type": "input_image",
-#                     "url": image
-#                 })
-
-#             response = client.responses.create(
-#                 model="gpt-5",
-#                 input=[
-#                     {
-#                         "role": "user", 
-#                         "content": [
-#                             {
-#                                 "type": "input_text", 
-#                                 "text": result.prompt_used
-#                             }, 
-#                             *input_images
-#                         ]
-#                     }
-#                 ]
-#             )
-
-#             result = result.result_json
-#             result['analysis'] = response.output_text
-#             result.status = models.AnalysisStatusChoices.COMPLETED
-#             result.result_json = json.dumps(result)
-#             result.save()
-
-#         except Exception as e: 
-#             result.status = models.AnalysisStatusChoices.FAILED
-#             result.save()
-
-#             raise 
 
 
 @app.task(bind=True, max_retries=2, default_retry_delay=10)
@@ -95,7 +46,9 @@ def run_llm_analysis_task(self, result_item_id: int):
 
             image_urls = payload.get("image_urls", []) or []
 
-            input_images = [{"type": "input_image", "image_url": u[8:]} for u in image_urls]
+            print(f"Image URLs: {image_urls}")
+
+            input_images = [{"type": "input_image", "image_url": u} for u in image_urls]
 
             resp = client.responses.create(
                 model="gpt-5",  # or your chosen model
