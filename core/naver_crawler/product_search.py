@@ -136,28 +136,43 @@ class NaverProductSearch:
         cookies = self.cookie.split("; ")
         cookies = {cookie.split("=")[0]: cookie.split("=")[1] for cookie in cookies}
 
-        proxy_server = "http://kr.decodo.com:10001"
-        proxy_username = "spe2t84yz6"
-        proxy_password = "+jlyDjNahl1Rm868Fy"
-        proxies = {
-            'http': f'http://{proxy_server}'
-        }
+        # proxy_server = "http://kr.decodo.com:10001"
+        # proxy_username = "spe2t84yz6"
+        # proxy_password = "+jlyDjNahl1Rm868Fy"
+        # proxies = {
+        #     'http': f'http://{proxy_server}'
+        # }
 
-        auth = HTTPProxyAuth(proxy_username, proxy_password)
+        # auth = HTTPProxyAuth(proxy_username, proxy_password)
         
-        response = requests.get(private_api, params=params, headers=headers, cookies=cookies, proxies=proxies, auth=auth)
+        # response = requests.get(private_api, params=params, headers=headers, cookies=cookies, proxies=proxies, auth=auth)
 
-        print(f"Channel UID response: {response.content}")
+        # print(f"Channel UID response: {response.content}")
 
-        if response.status_code == 200:            
-            try:
-                data = response.json()
-                channel_uid = data.get("data", [])[0].get("channelUid", None)
-                return channel_uid
-            except:
-                return None 
-        else:
-            return None 
+        # if response.status_code == 200:            
+        #     try:
+        #         data = response.json()
+        #         channel_uid = data.get("data", [])[0].get("channelUid", None)
+        #         return channel_uid
+        #     except:
+        #         return None 
+        # else:
+        #     return None 
+        
+        query_string = urllib.parse.urlencode(params)
+        full_target_url = f"{self.base_target_url}?{query_string}"
+        encoded_url = urllib.parse.quote(full_target_url, safe='')
+
+        # Scrape.do wrapper URL
+        scrape_do_url = (
+            f"http://api.scrape.do/?token={os.getenv('SCRAPEDO_API_KEY')}&url={encoded_url}"
+            "&super=true&geocode=KR&customHeaders=true"
+        )
+
+        response = requests.get(scrape_do_url, headers=headers)
+
+        print(f"Channel UID response status code: {response.status_code}")
+        print(f"Channel UID response content: {response.content}")
 
 
 if __name__ == "__main__":
