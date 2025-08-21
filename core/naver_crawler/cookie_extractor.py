@@ -21,7 +21,7 @@ class NaverCookieExtractor:
     def extract_cookies(self, url):
         with sync_playwright() as pw: 
             browser = pw.chromium.launch(
-                headless=False,
+                headless=True,
                 proxy={
                     "server": os.getenv("PROXY_SERVER"),
                     "username": os.getenv("PROXY_USERNAME"),
