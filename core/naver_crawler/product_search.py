@@ -131,8 +131,9 @@ class NaverProductSearch:
         # cookies = self.cookie.split("; ")
         # cookie_dict = {cookie.split("=")[0]: cookie.split("=")[1] for cookie in cookies}
 
-        cookies = "PM_CK_loc=73c3d5639091fc36cc17344174ee75fca59885c1f41cc1e4cee7b84910b85ccf; NAC=oeo1DYhxRWiVB; NACT=1; NM_srt_chzzk=1; NNB=ZTUIV5OEGWOWQ; SRT30=1755133380; SRT5=1755133380; BUC=2YPg7CA_egD9BSWXjQLRiWakj09_WqeAPzTtcH9NDvQ="
-        cookies = cookies.split("; ")
+        # cookies = "PM_CK_loc=73c3d5639091fc36cc17344174ee75fca59885c1f41cc1e4cee7b84910b85ccf; NAC=oeo1DYhxRWiVB; NACT=1; NM_srt_chzzk=1; NNB=ZTUIV5OEGWOWQ; SRT30=1755133380; SRT5=1755133380; BUC=2YPg7CA_egD9BSWXjQLRiWakj09_WqeAPzTtcH9NDvQ="
+        # cookies = cookies.split("; ")
+        cookies = self.cookie.split("; ")
         cookies = {cookie.split("=")[0]: cookie.split("=")[1] for cookie in cookies}
 
         proxy_server = "http://kr.decodo.com:10001"
