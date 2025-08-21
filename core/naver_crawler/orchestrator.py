@@ -208,17 +208,16 @@ class Orchestrator:
                             else:
                                 file_name = f"{product_id}_{count}.jpg"
 
-                            # with open(file_name, 'wb') as file:
-                            #     file.write(response.content)
+                            with open(file_name, 'wb') as file:
+                                file.write(response.content)
                             gif_file_name = None
+                            png_file_name = None
                             if 'gif' in product_url: 
-                                im = Image.open(file_name)
-                                im.save(f"{product_id}_{count}.png")
-                                gif_file_name = file_name
-                                file_name = f"{product_id}_{count}.png"
-                            else: 
-                                with open(file_name, 'wb') as file:
-                                    file.write(response.content)
+                                with Image.open(file_name) as im:
+                                    png_file_name = f"{product_id}_{count}.png"
+                                    im.save(png_file_name)
+                                gif_file_name = file_name  # Keep reference to original GIF
+                                file_name = png_file_name 
                             
                             # Upload to Digital Ocean Spaces
                             image_url = self.upload_to_digital_ocean(file_name, object_name=f"product_details/{file_name}")
