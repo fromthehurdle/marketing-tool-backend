@@ -82,6 +82,7 @@ class Orchestrator:
             print(f"Error saving product search to database: {e}")
             return False
 
+    
     def save_product_details_to_db(self, result_item, image_url, order): 
         try: 
             result_detail_image = models.ResultDetailImage.objects.create(
@@ -207,14 +208,17 @@ class Orchestrator:
                             else:
                                 file_name = f"{product_id}_{count}.jpg"
 
-                            with open(file_name, 'wb') as file:
-                                file.write(response.content)
+                            # with open(file_name, 'wb') as file:
+                            #     file.write(response.content)
                             gif_file_name = None
                             if 'gif' in product_url: 
                                 im = Image.open(file_name)
                                 im.save(f"{product_id}_{count}.png")
                                 gif_file_name = file_name
                                 file_name = f"{product_id}_{count}.png"
+                            else: 
+                                with open(file_name, 'wb') as file:
+                                    file.write(response.content)
                             
                             # Upload to Digital Ocean Spaces
                             image_url = self.upload_to_digital_ocean(file_name, object_name=f"product_details/{file_name}")
